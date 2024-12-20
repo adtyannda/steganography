@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steganography - Decode</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            text-align: center;
+        }
+        input, button {
+            margin: 10px 0;
+        }
+        canvas {
+            border: 1px solid black;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Steganography - Decode</h1>
+
+    <input type="file" id="decode-image-input" accept="image/*"><br>
+    <label for="pixel-interval">Message hidden every</label>
+    <input type="number" id="pixel-interval" value="100" min="1"> pixels.<br>
+    <label for="color-channel">Using the</label>
+    <select id="color-channel">
+        <option value="R">R</option>
+        <option value="G">G</option>
+        <option value="B">B</option>
+    </select> value.<br>
+    <button onclick="decodeMessage()">Decode Image</button><br>
+
+    <h2>Decoded Message</h2>
+    <textarea id="decoded-message" rows="5" cols="40" readonly></textarea><br>
+
+    <script>
+        // Decode message from the image
+        function decodeMessage() {
+            const fileInput = document.getElementById('decode-image-input');
+            const pixelInterval = parseInt(document.getElementById('pixel-interval').value, 10);
+            const colorChannel = document.getElementById('color-channel').value;
+            const decodedMessageTextarea = document.getElementById('decoded-message');
+
+            if (!fileInput.files[0]) {
+                alert('Please upload an image!');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+
+                    const imageData = ctx.getImageData(0, 0, img.width, img.height);
+                    const data = imageData.data;
+
+                    let binaryMessage = '';
+                    let channelOffset;
+                    switch (colorChannel) {
+                        case 'R': channelOffset = 0; break;
+                        case 'G': channelOffset = 1; break;
+                        case 'B': channelOffset = 2; break;
+                        default: channelOffset = 0; break;
+                    }
+
+                    for (let i = channelOffset; i < data.length; i += 4 * pixelInterval) {
+                        binaryMessage += (data[i] & 1).toString();
+                    }
+
+                    // Convert binary to text
+                    let message = '';
+                    for (let i = 0; i < binaryMessage.length; i += 8) {
+                        const byte = binaryMessage.slice(i, i + 8);
+                        if (byte === '00000000') break;
+                        message += String.fromCharCode(parseInt(byte, 2));
+                    }
+
+                    decodedMessageTextarea.value = message;
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        }
+    </script>
+
+    <br><br>
+    <a href="encode.html">Go to Encode Page</a>
+</body>
+</html>

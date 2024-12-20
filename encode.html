@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steganography - Encode</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            text-align: center;
+        }
+        input, button, textarea, select {
+            margin: 10px 0;
+        }
+        canvas {
+            border: 1px solid black;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Steganography - Encode</h1>
+
+    <h2>Encoding Parameters</h2>
+    <input type="file" id="encode-image-input" accept="image/*"><br>
+    <textarea id="secret-message" rows="5" cols="40" placeholder="Your secret message..."></textarea><br>
+    <label for="pixel-interval">Hide message every</label>
+    <input type="number" id="pixel-interval" value="100" min="1"> pixels. <br>
+    <label for="color-channel">Using the</label>
+    <select id="color-channel">
+        <option value="R">R</option>
+        <option value="G">G</option>
+        <option value="B">B</option>
+    </select> value.<br>
+    <button onclick="encodeMessage()">Encode Image</button><br>
+
+    <h2>Encoded Image</h2>
+    <canvas id="encoded-canvas"></canvas><br>
+    <a id="download-link" style="display: none;">Download Encoded Image</a>
+
+    <script>
+        // Encode message into the image
+        function encodeMessage() {
+            const fileInput = document.getElementById('encode-image-input');
+            const secretMessage = document.getElementById('secret-message').value;
+            const pixelInterval = parseInt(document.getElementById('pixel-interval').value, 10);
+            const colorChannel = document.getElementById('color-channel').value;
+            const canvas = document.getElementById('encoded-canvas');
+            const ctx = canvas.getContext('2d');
+
+            if (!fileInput.files[0]) {
+                alert('Please upload an image!');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+
+                    const imageData = ctx.getImageData(0, 0, img.width, img.height);
+                    const data = imageData.data;
+
+                    let messageIndex = 0;
+                    const binaryMessage = secretMessage.split('').map(char => char.charCodeAt(0).toString(2).padStart(8, '0')).join('') + '00000000';
+
+                    let channelOffset;
+                    switch (colorChannel) {
+                        case 'R': channelOffset = 0; break;
+                        case 'G': channelOffset = 1; break;
+                        case 'B': channelOffset = 2; break;
+                        default: channelOffset = 0; break;
+                    }
+
+                    for (let i = channelOffset; i < data.length; i += 4 * pixelInterval) {
+                        if (messageIndex < binaryMessage.length) {
+                            data[i] = (data[i] & 254) | parseInt(binaryMessage[messageIndex], 2);
+                            messageIndex++;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    ctx.putImageData(imageData, 0, 0);
+
+                    // Create a download link
+                    const downloadLink = document.getElementById('download-link');
+                    downloadLink.href = canvas.toDataURL();
+                    downloadLink.download = 'encoded-image.png';
+                    downloadLink.style.display = 'block';
+                    downloadLink.textContent = 'Download Encoded Image';
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(fileInput.files[0]);
+        }
+    </script>
+
+    <br><br>
+    <a href="decode.html">Go to Decode Page</a>
+</body>
+</html>
